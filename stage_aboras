@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة التقاط النجوم</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a2e;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            border: 3px solid #e94560;
+            border-radius: 10px;
+            background: #16213e;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.4);
+            touch-action: none;
+        }
+        .info {
+            margin-bottom: 10px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info">النقاط: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="360" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+
+        let score = 0;
+        let gameOver = false;
+
+        // السلة (اللاعب)
+        const player = {
+            x: canvas.width / 2 - 35,
+            y: canvas.height - 30,
+            width: 70,
+            height: 15,
+            speed: 7,
+            dx: 0
+        };
+
+        // العناصر المتساقطة
+        let items = [];
+
+        function createItem() {
+            const isBomb = Math.random() < 0.3; // 30% احتمال قنبلة
+            items.push({
+                x: Math.random() * (canvas.width - 20),
+                y: -20,
+                size: 20,
+                speed: 2 + Math.random() * 3,
+                type: isBomb ? 'bomb' : 'star'
+            });
+        }
+
+        setInterval(createItem, 800);
+
+        // التحكم بالكيبورد
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft" || e.key === "a") player.dx = -player.speed;
+            if (e.key === "ArrowRight" || e.key === "d") player.dx = player.speed;
+        });
+
+        document.addEventListener("keyup", () => player.dx = 0);
+
+        // التحكم باللمس للهواتف
+        canvas.addEventListener("touchmove", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const touchX = e.touches[0].clientX - rect.left;
+            player.x = touchX - player.width / 2;
+        });
+
+        function update() {
+            if (gameOver) return;
+
+            // تحريك اللاعب
+            player.x += player.dx;
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            // تحديث العناصر
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                item.y += item.speed;
+
+                // الاصطدام باللاعب
+                if (
+                    item.y + item.size >= player.y &&
+                    item.x + item.size >= player.x &&
+                    item.x <= player.x + player.width
+                ) {
+                    if (item.type === 'star') {
+                        score += 10;
+                        scoreEl.innerText = score;
+                    } else {
+                        gameOver = true;
+                        alert("خسرت! مجموع نقاطك: " + score);
+                        document.location.reload();
+                    }
+                    items.splice(i, 1);
+                    i--;
+                    continue;
+                }
+
+                // حذف العنصر إذا تجاوز الشاشة
+                if (item.y > canvas.height) {
+                    items.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // رسم اللاعب
+            ctx.fillStyle = "#00fff5";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // رسم العناصر
+            items.forEach(item => {
+                ctx.beginPath();
+                ctx.arc(item.x + item.size / 2, item.y + item.size / 2, item.size / 2, 0, Math.PI * 2);
+                ctx.fillStyle = item.type === 'star' ? "#ff0" : "#ff4d4d";
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (!gameOver) requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
